@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconocedor de Flores y Animales</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .start-button, .upload-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.3);
+            min-width: 160px;
+        }
+
+        .upload-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .start-button:hover, .upload-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(238, 90, 36, 0.4);
+        }
+
+        .upload-button:hover {
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+
+        .start-button:disabled, .upload-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .webcam-section {
+            margin-bottom: 30px;
+        }
+
+        #webcam-container, #image-container {
+            display: inline-block;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        #webcam-container canvas, #image-container img {
+            display: block;
+            border-radius: 15px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #image-container img {
+            max-width: 300px;
+            max-height: 300px;
+            object-fit: cover;
+        }
+
+        .predictions-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .predictions-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .prediction-item {
+            background: white;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .prediction-item:hover {
+            transform: translateX(5px);
+        }
+
+        .prediction-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .prediction-confidence {
+            background: #3498db;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            min-width: 60px;
+        }
+
+        .prediction-confidence.high {
+            background: #27ae60;
+        }
+
+        .prediction-confidence.medium {
+            background: #f39c12;
+        }
+
+        .prediction-confidence.low {
+            background: #e74c3c;
+        }
+
+        .loading {
+            display: none;
+            color: #666;
+            font-style: italic;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d1edff;
+            color: #0066cc;
+            border: 1px solid #b3d9ff;
+        }
+
+        .status.error {
+            background: #ffe6e6;
+            color: #cc0000;
+            border: 1px solid #ffb3b3;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .start-button, .upload-button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌸 Reconocedor de Flores y Animales 🐾</h1>
+        <p>Inteligencia artificial para identificar flores y animales en tiempo real</p>
+    </div>
+
+    <div class="container">
+        <div class="button-group">
+            <button class="start-button" id="startBtn" onclick="init()">
+                🚀 Iniciar Cámara
+            </button>
+            
+            <button class="upload-button" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
+                📸 Subir Foto
+            </button>
+            
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+        </div>
+        
+        <div class="loading" id="loading">
+            Cargando modelo de IA... Por favor espera 📱
+        </div>
+        
+        <div class="status hidden" id="status"></div>
+        
+        <div class="webcam-section">
+            <div id="webcam-container"></div>
+            <div id="image-container"></div>
+        </div>
+        
+        <div class="predictions-section hidden" id="predictions-section">
+            <div class="predictions-title">📊 Predicciones en Tiempo Real</div>
+            <div id="label-container"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Powered by TensorFlow.js & Teachable Machine</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+        const URL = "./my_model/";
+        let model, webcam, labelContainer, maxPredictions;
+        let isInitialized = false;
+        let currentMode = 'none'; // 'webcam', 'image', 'none'
+
+        function showStatus(message, type = 'success') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.classList.remove('hidden');
+            
+            setTimeout(() => {
+                statusEl.classList.add('hidden');
+            }, 3000);
+        }
+
+        function showLoading(show) {
+            const loadingEl = document.getElementById('loading');
+            const startBtn = document.getElementById('startBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+            
+            if (show) {
+                loadingEl.style.display = 'block';
+                startBtn.disabled = true;
+                uploadBtn.disabled = true;
+                startBtn.textContent = 'Cargando...';
+                uploadBtn.textContent = 'Cargando...';
+            } else {
+                loadingEl.style.display = 'none';
+                startBtn.disabled = false;
+                uploadBtn.disabled = false;
+                startBtn.textContent = '🚀 Iniciar Cámara';
+                uploadBtn.textContent = '📸 Subir Foto';
+            }
+        }
+
+        async function loadModel() {
+            if (!model) {
+                showLoading(true);
+                try {
+                    const modelURL = URL + "model.json";
+                    const metadataURL = URL + "metadata.json";
+                    
+                    model = await tmImage.load(modelURL, metadataURL);
+                    maxPredictions = model.getTotalClasses();
+                    
+                    showLoading(false);
+                    showStatus('¡Modelo cargado correctamente! 🤖', 'success');
+                } catch (error) {
+                    console.error('Error al cargar el modelo:', error);
+                    showLoading(false);
+                    showStatus('Error al cargar el modelo. Verifica que los archivos estén disponibles.', 'error');
+                    throw error;
+                }
+            }
+        }
+
+        function setupPredictionContainer() {
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = '';
+            
+            for (let i = 0; i < maxPredictions; i++) {
+                const predictionDiv = document.createElement("div");
+                predictionDiv.className = "prediction-item";
+                predictionDiv.innerHTML = `
+                    <span class="prediction-name">Clase ${i + 1}</span>
+                    <span class="prediction-confidence">0%</span>
+                `;
+                labelContainer.appendChild(predictionDiv);
+            }
+
+            document.getElementById('predictions-section').classList.remove('hidden');
+        }
+
+        async function init() {
+            if (currentMode === 'webcam') {
+                showStatus('La cámara ya está activa', 'error');
+                return;
+            }
+
+            try {
+                await loadModel();
+                
+                // Detener webcam si estaba activa
+                if (webcam) {
+                    webcam.stop();
+                }
+
+                // Configurar la webcam
+                const flip = true;
+                webcam = new tmImage.Webcam(300, 300, flip);
+                await webcam.setup();
+                await webcam.play();
+
+                // Limpiar contenedor de imagen
+                document.getElementById('image-container').innerHTML = '';
+
+                // Agregar canvas de webcam
+                const webcamContainer = document.getElementById("webcam-container");
+                webcamContainer.innerHTML = '';
+                webcamContainer.appendChild(webcam.canvas);
+
+                setupPredictionContainer();
+                
+                currentMode = 'webcam';
+                window.requestAnimationFrame(loop);
+                
+                showStatus('¡Cámara iniciada correctamente! 📸', 'success');
+
+            } catch (error) {
+                console.error('Error al inicializar webcam:', error);
+                showStatus('Error al inicializar la cámara.', 'error');
+            }
+        }
+
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validar tipo de archivo
+            if (!file.type.startsWith('image/')) {
+                showStatus('Por favor selecciona un archivo de imagen válido.', 'error');
+                event.target.value = '';
+                return;
+            }
+
+            // Validar tamaño (máximo 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showStatus('La imagen es demasiado grande. Máximo 10MB.', 'error');
+                event.target.value = '';
+                return;
+            }
+
+            try {
+                showStatus('Cargando y analizando imagen...', 'success');
+                await loadModel();
+                
+                // Detener webcam si estaba activa
+                if (webcam) {
+                    webcam.stop();
+                }
+
+                // Limpiar contenedor de webcam
+                document.getElementById('webcam-container').innerHTML = '';
+
+                // Crear elemento imagen
+                const img = document.createElement('img');
+                const imageUrl = window.URL.createObjectURL(file);
+                
+                img.onload = async function() {
+                    try {
+                        // Liberar URL objeto
+                        window.URL.revokeObjectURL(imageUrl);
+                        
+                        // Mostrar imagen
+                        const imageContainer = document.getElementById('image-container');
+                        imageContainer.innerHTML = '';
+                        imageContainer.appendChild(img);
+
+                        setupPredictionContainer();
+                        
+                        // Esperar un momento para que la imagen se renderice
+                        setTimeout(async () => {
+                            try {
+                                await predictImage(img);
+                                currentMode = 'image';
+                                showStatus('¡Imagen analizada correctamente! 🎯', 'success');
+                            } catch (error) {
+                                console.error('Error en predicción:', error);
+                                showStatus('Error al analizar la imagen. Inténtalo de nuevo.', 'error');
+                            }
+                        }, 100);
+                        
+                    } catch (error) {
+                        console.error('Error al procesar imagen:', error);
+                        showStatus('Error al procesar la imagen.', 'error');
+                    }
+                };
+
+                img.onerror = function() {
+                    window.URL.revokeObjectURL(imageUrl);
+                    showStatus('Error al cargar la imagen. Inténtalo con otra.', 'error');
+                };
+
+                img.src = imageUrl;
+
+            } catch (error) {
+                console.error('Error al cargar imagen:', error);
+                showStatus('Error al procesar la imagen.', 'error');
+            }
+
+            // Limpiar input
+            event.target.value = '';
+        }
+
+        async function predictImage(imgElement) {
+            try {
+                if (!model) {
+                    throw new Error('Modelo no cargado');
+                }
+                
+                if (!imgElement || !imgElement.complete) {
+                    throw new Error('Imagen no válida o no cargada');
+                }
+
+                // Asegurar que la imagen esté completamente cargada
+                await new Promise((resolve, reject) => {
+                    if (imgElement.complete) {
+                        resolve();
+                    } else {
+                        imgElement.onload = resolve;
+                        imgElement.onerror = reject;
+                    }
+                });
+
+                const prediction = await model.predict(imgElement);
+                updatePredictions(prediction);
+                
+            } catch (error) {
+                console.error('Error en predicción de imagen:', error);
+                showStatus('Error al analizar la imagen. Verifica que sea una imagen válida.', 'error');
+                throw error;
+            }
+        }
+
+        async function loop() {
+            if (webcam && model && currentMode === 'webcam') {
+                webcam.update();
+                await predict();
+            }
+            if (currentMode === 'webcam') {
+                window.requestAnimationFrame(loop);
+            }
+        }
+
+        async function predict() {
+            try {
+                const prediction = await model.predict(webcam.canvas);
+                updatePredictions(prediction);
+            } catch (error) {
+                console.error('Error en predicción:', error);
+            }
+        }
+
+        function updatePredictions(prediction) {
+            for (let i = 0; i < maxPredictions; i++) {
+                const predictionItem = labelContainer.children[i];
+                const nameEl = predictionItem.querySelector('.prediction-name');
+                const confidenceEl = predictionItem.querySelector('.prediction-confidence');
+                
+                const className = prediction[i].className;
+                const probability = prediction[i].probability;
+                const percentage = Math.round(probability * 100);
+                
+                nameEl.textContent = className;
+                confidenceEl.textContent = `${percentage}%`;
+                
+                // Cambiar color según la confianza
+                confidenceEl.className = 'prediction-confidence';
+                if (percentage >= 80) {
+                    confidenceEl.classList.add('high');
+                } else if (percentage >= 50) {
+                    confidenceEl.classList.add('medium');
+                } else {
+                    confidenceEl.classList.add('low');
+                }
+                
+                // Destacar la predicción más alta
+                if (probability === Math.max(...prediction.map(p => p.probability))) {
+                    predictionItem.style.borderLeft = '4px solid #27ae60';
+                    predictionItem.style.background = '#f0fff4';
+                } else {
+                    predictionItem.style.borderLeft = '4px solid #3498db';
+                    predictionItem.style.background = 'white';
+                }
+            }
+        }
+
+        // Manejar errores de carga de recursos
+        window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'SCRIPT') {
+                showStatus('Error al cargar recursos externos. Verifica tu conexión.', 'error');
+            }
+        });
+
+        // Mensaje de bienvenida
+        window.addEventListener('load', function() {
+            showStatus('¡Aplicación lista! Usa la cámara o sube una foto para comenzar 🎯', 'success');
+        });
+    </script>
+</body>
+</html>
