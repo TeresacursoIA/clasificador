@@ -106,6 +106,78 @@
             box-shadow: none;
         }
 
+        /* Nuevos estilos para selección de cámara */
+        .camera-controls {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .camera-controls h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+
+        .camera-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .camera-option {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .camera-option:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+        }
+
+        .camera-option.active {
+            border-color: #3498db;
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .switch-camera-btn {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
+        }
+
+        .switch-camera-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
+        }
+
+        .switch-camera-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .webcam-section {
             margin-bottom: 30px;
         }
@@ -241,6 +313,16 @@
                 width: 100%;
                 margin-bottom: 10px;
             }
+            
+            .camera-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .camera-option {
+                width: 100%;
+                justify-content: center;
+            }
         }
 
         .hidden {
@@ -269,6 +351,22 @@
             </button>
             
             <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+        </div>
+
+        <!-- Nueva sección de controles de cámara -->
+        <div class="camera-controls hidden" id="camera-controls">
+            <h3>📱 Selección de Cámara</h3>
+            <div class="camera-selector">
+                <div class="camera-option active" id="rear-camera" onclick="selectCamera('environment')">
+                    📹 Cámara Trasera
+                </div>
+                <div class="camera-option" id="front-camera" onclick="selectCamera('user')">
+                    🤳 Cámara Frontal
+                </div>
+            </div>
+            <button class="switch-camera-btn" id="switch-btn" onclick="switchCamera()">
+                🔄 Cambiar Cámara
+            </button>
         </div>
         
         <div class="loading" id="loading">
@@ -299,6 +397,8 @@
         let model, webcam, labelContainer, maxPredictions;
         let isInitialized = false;
         let currentMode = 'none'; // 'webcam', 'image', 'none'
+        let currentFacingMode = 'environment'; // 'environment' para trasera, 'user' para frontal
+        let mediaStream = null; // Para controlar el stream de la cámara
 
         function showStatus(message, type = 'success') {
             const statusEl = document.getElementById('status');
@@ -331,6 +431,97 @@
             }
         }
 
+        // Nueva función para seleccionar tipo de cámara
+        function selectCamera(facingMode) {
+            currentFacingMode = facingMode;
+            
+            // Actualizar UI
+            document.querySelectorAll('.camera-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            
+            if (facingMode === 'environment') {
+                document.getElementById('rear-camera').classList.add('active');
+            } else {
+                document.getElementById('front-camera').classList.add('active');
+            }
+        }
+
+        // Nueva función para cambiar de cámara mientras está activa
+        async function switchCamera() {
+            if (currentMode !== 'webcam') {
+                showStatus('Primero inicia la cámara para poder cambiarla', 'error');
+                return;
+            }
+
+            const newFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+            
+            try {
+                document.getElementById('switch-btn').disabled = true;
+                showStatus('Cambiando cámara...', 'success');
+                
+                // Detener webcam actual
+                if (webcam) {
+                    webcam.stop();
+                }
+
+                // Cambiar selección
+                selectCamera(newFacingMode);
+
+                // Reiniciar webcam con nueva cámara
+                await initWebcam();
+                
+                showStatus(`Cámara ${newFacingMode === 'environment' ? 'trasera' : 'frontal'} activada! 📸`, 'success');
+                
+            } catch (error) {
+                console.error('Error al cambiar cámara:', error);
+                showStatus('Error al cambiar de cámara. Inténtalo de nuevo.', 'error');
+            } finally {
+                document.getElementById('switch-btn').disabled = false;
+            }
+        }
+
+        // Nueva función separada para inicializar la webcam
+        async function initWebcam() {
+            try {
+                // Configurar la webcam con la cámara seleccionada
+                const flip = currentFacingMode === 'user'; // Solo voltear para cámara frontal
+                
+                // Configuración específica para móviles
+                const constraints = {
+                    video: {
+                        facingMode: currentFacingMode,
+                        width: { ideal: 300 },
+                        height: { ideal: 300 }
+                    }
+                };
+
+                webcam = new tmImage.Webcam(300, 300, flip);
+                
+                // Intentar configurar con la cámara específica
+                try {
+                    await webcam.setup(constraints);
+                } catch (error) {
+                    console.log('Fallback a configuración básica:', error);
+                    // Fallback a configuración básica si falla la específica
+                    await webcam.setup();
+                }
+                
+                await webcam.play();
+
+                // Limpiar contenedor de imagen
+                document.getElementById('image-container').innerHTML = '';
+
+                // Agregar canvas de webcam
+                const webcamContainer = document.getElementById("webcam-container");
+                webcamContainer.innerHTML = '';
+                webcamContainer.appendChild(webcam.canvas);
+
+            } catch (error) {
+                throw error;
+            }
+        }
+
         function resetApp() {
             // Detener webcam si está activa
             if (webcam) {
@@ -343,8 +534,9 @@
             document.getElementById('image-container').innerHTML = '';
             document.getElementById('label-container').innerHTML = '';
 
-            // Ocultar sección de predicciones
+            // Ocultar secciones
             document.getElementById('predictions-section').classList.add('hidden');
+            document.getElementById('camera-controls').classList.add('hidden');
 
             // Ocultar status y loading
             document.getElementById('status').classList.add('hidden');
@@ -362,6 +554,10 @@
             // Resetear variables
             currentMode = 'none';
             labelContainer = null;
+            currentFacingMode = 'environment';
+
+            // Resetear selección de cámara
+            selectCamera('environment');
 
             // Mostrar mensaje de reset
             showStatus('¡Aplicación reiniciada! Listo para comenzar de nuevo 🎯', 'success');
@@ -419,30 +615,33 @@
                     webcam.stop();
                 }
 
-                // Configurar la webcam
-                const flip = true;
-                webcam = new tmImage.Webcam(300, 300, flip);
-                await webcam.setup();
-                await webcam.play();
-
-                // Limpiar contenedor de imagen
-                document.getElementById('image-container').innerHTML = '';
-
-                // Agregar canvas de webcam
-                const webcamContainer = document.getElementById("webcam-container");
-                webcamContainer.innerHTML = '';
-                webcamContainer.appendChild(webcam.canvas);
+                // Inicializar webcam
+                await initWebcam();
 
                 setupPredictionContainer();
+                
+                // Mostrar controles de cámara
+                document.getElementById('camera-controls').classList.remove('hidden');
                 
                 currentMode = 'webcam';
                 window.requestAnimationFrame(loop);
                 
-                showStatus('¡Cámara iniciada correctamente! 📸', 'success');
+                const cameraType = currentFacingMode === 'environment' ? 'trasera' : 'frontal';
+                showStatus(`¡Cámara ${cameraType} iniciada correctamente! 📸`, 'success');
 
             } catch (error) {
                 console.error('Error al inicializar webcam:', error);
-                showStatus('Error al inicializar la cámara.', 'error');
+                let errorMessage = 'Error al inicializar la cámara.';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Acceso a la cámara denegado. Por favor, permite el acceso.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No se encontró ninguna cámara disponible.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = 'La cámara está siendo usada por otra aplicación.';
+                }
+                
+                showStatus(errorMessage, 'error');
             }
         }
 
@@ -472,6 +671,9 @@
                 if (webcam) {
                     webcam.stop();
                 }
+
+                // Ocultar controles de cámara
+                document.getElementById('camera-controls').classList.add('hidden');
 
                 // Limpiar contenedor de webcam
                 document.getElementById('webcam-container').innerHTML = '';
