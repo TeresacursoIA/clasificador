@@ -57,8 +57,7 @@
             margin-bottom: 30px;
         }
 
-        .start-button, .upload-button {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        .start-button, .upload-button, .reset-button {
             color: white;
             border: none;
             padding: 15px 30px;
@@ -66,8 +65,12 @@
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.3);
             min-width: 160px;
+        }
+
+        .start-button, .upload-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.3);
         }
 
         .upload-button {
@@ -75,8 +78,16 @@
             box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
         }
 
-        .start-button:hover, .upload-button:hover {
+        .reset-button {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .start-button:hover, .upload-button:hover, .reset-button:hover {
             transform: translateY(-2px);
+        }
+
+        .start-button:hover {
             box-shadow: 0 8px 25px rgba(238, 90, 36, 0.4);
         }
 
@@ -84,7 +95,11 @@
             box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
         }
 
-        .start-button:disabled, .upload-button:disabled {
+        .reset-button:hover {
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
+        }
+
+        .start-button:disabled, .upload-button:disabled, .reset-button:disabled {
             background: #ccc;
             cursor: not-allowed;
             transform: none;
@@ -222,7 +237,7 @@
                 align-items: center;
             }
             
-            .start-button, .upload-button {
+            .start-button, .upload-button, .reset-button {
                 width: 100%;
                 margin-bottom: 10px;
             }
@@ -247,6 +262,10 @@
             
             <button class="upload-button" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
                 📸 Subir Foto
+            </button>
+
+            <button class="reset-button" id="resetBtn" onclick="resetApp()">
+                🔄 Reset
             </button>
             
             <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
@@ -310,6 +329,42 @@
                 startBtn.textContent = '🚀 Iniciar Cámara';
                 uploadBtn.textContent = '📸 Subir Foto';
             }
+        }
+
+        function resetApp() {
+            // Detener webcam si está activa
+            if (webcam) {
+                webcam.stop();
+                webcam = null;
+            }
+
+            // Limpiar contenedores
+            document.getElementById('webcam-container').innerHTML = '';
+            document.getElementById('image-container').innerHTML = '';
+            document.getElementById('label-container').innerHTML = '';
+
+            // Ocultar sección de predicciones
+            document.getElementById('predictions-section').classList.add('hidden');
+
+            // Ocultar status y loading
+            document.getElementById('status').classList.add('hidden');
+            document.getElementById('loading').style.display = 'none';
+
+            // Limpiar input de archivo
+            document.getElementById('fileInput').value = '';
+
+            // Habilitar botones
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('uploadBtn').disabled = false;
+            document.getElementById('startBtn').textContent = '🚀 Iniciar Cámara';
+            document.getElementById('uploadBtn').textContent = '📸 Subir Foto';
+
+            // Resetear variables
+            currentMode = 'none';
+            labelContainer = null;
+
+            // Mostrar mensaje de reset
+            showStatus('¡Aplicación reiniciada! Listo para comenzar de nuevo 🎯', 'success');
         }
 
         async function loadModel() {
